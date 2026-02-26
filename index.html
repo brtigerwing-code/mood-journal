@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>My Journal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            max-width: 500px;
+            margin: auto;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+        }
+        button {
+            padding: 10px;
+            margin-top: 10px;
+            width: 100%;
+        }
+        .entry {
+            border-bottom: 1px solid #ccc;
+            margin-top: 10px;
+            padding-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<h2>今の気分は？</h2>
+
+<input type="range" min="1" max="7" value="4" id="moodSlider">
+<p>気分スコア: <span id="moodValue">4</span></p>
+
+<p id="prompt"></p>
+
+<textarea id="textInput" placeholder="感じたことを自由に書いてください（任意）"></textarea>
+
+<button onclick="saveEntry()">保存</button>
+<h3>気分の推移</h3>
+<canvas id="moodChart" height="200"></canvas>
+<h3>記録一覧</h3>
+<div id="entries"></div>
+
+<script>
+const prompts = [
+    "今日いちばん印象に残ったことは？",
+    "今の気分の原因は？",
+    "体調はどう？",
+    "誰とのやり取りが心に残った？"
+];
+
+const slider = document.getElementById("moodSlider");
+const moodValue = document.getElementById("moodValue");
+const promptText = document.getElementById("prompt");
+
+moodValue.textContent = slider.value;
+promptText.textContent = prompts[Math.floor(Math.random() * prompts.length)];
+
+slider.oninput = function() {
+    moodValue.textContent = this.value;
+};
+
+function saveEntry() {
+    const mood = slider.value;
+    const text = document.getElementById("textInput").value;
+    const entry = {
+        timestamp: new Date().toLocaleString(),
+        mood: mood,
+        text: text
+    };
+
+    let entries = JSON.parse(localStorage.getItem("journalEntries")) || [];
+    entries.push(entry);
+    localStorage.setItem("journalEntries", JSON.stringify(entries));
+
+    document.getElementById("textInput").value = "";
+    loadEntries();
+    drawChart();
+}
+
+function loadEntries() {
+    const container = document.getElementById("entries");
+    container.innerHTML = "";
+    const entries = JSON.parse(localStorage.getItem("journalEntries")) || [];
+    entries.forEach((entry, index) => {
+        const div = document.createElement("div");
+        div.className = "entry";
+        div.innerHTML =
+  "<strong>" + entry.timestamp + "</strong><br>" +
+  "気分: " + entry.mood + "<br>" +
+  (entry.text || "") +
+  "<br><button onclick='deleteEntry(" + index + ")'>削除</button>";
+        container.appendChild(div);
+    });
+}
+
+loadEntries();
+function deleteEntry(index) {
+  let entries = JSON.parse(localStorage.getItem("journalEntries")) || [];
+  entries.splice(index, 1);
+  localStorage.setItem("journalEntries", JSON.stringify(entries));
+  loadEntries();
+  drawChart();
+}
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+  let chartInstance;
+function drawChart() {
+  const entries = JSON.parse(localStorage.getItem("journalEntries")) || [];
+
+const dailyData = {};
+
+entries.forEach((entry, index) => {
+  const dateOnly = entry.timestamp.split(" ")[0];
+
+  if (!dailyData[dateOnly]) {
+    dailyData[dateOnly] = [];
+  }
+
+  dailyData[dateOnly].push(Number(entry.mood));
+});
+
+const labels = Object.keys(dailyData).sort((a,b) => new Date(a) - new Date(b));
+
+const moods = labels.map(date => {
+  const sum = dailyData[date].reduce((a, b) => a + b, 0);
+  return sum / dailyData[date].length;
+});
+
+const movingAverage = moods.map((_, index, array) => {
+  const start = Math.max(0, index - 6);
+  const subset = array.slice(start, index + 1);
+  const sum = subset.reduce((a, b) => a + b, 0);
+  return sum / subset.length;
+});
+
+  const ctx = document.getElementById("moodChart").getContext("2d");
+
+  if (chartInstance){
+    chartInstance.destroy();
+  }
+
+  chartInstance = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [
+  {
+    label: "1日平均",
+    data: moods,
+    borderWidth: 2
+  },
+  {
+    label: "7日移動平均",
+    data: movingAverage,
+    borderWidth: 2
+  }
+]
+    },
+    options: {
+      scales:{
+        y:{
+          min: 1,
+          max: 7
+        }
+      }
+    }
+  });
+}
+
+drawChart();
+</script>
+
+</body>
+</html>
