@@ -50,6 +50,7 @@ const prompts = [
     "今の気分の原因は？",
     "体調はどう？",
     "誰とのやり取りが心に残った？"
+    "今日食べたものは？"
 ];
 
 const slider = document.getElementById("moodSlider");
@@ -84,16 +85,41 @@ function saveEntry() {
 function loadEntries() {
     const container = document.getElementById("entries");
     container.innerHTML = "";
+
     const entries = JSON.parse(localStorage.getItem("journalEntries")) || [];
+
+    const grouped = {};
+
     entries.forEach((entry, index) => {
-        const div = document.createElement("div");
-        div.className = "entry";
-        div.innerHTML =
-  "<strong>" + entry.timestamp + "</strong><br>" +
-  "気分: " + entry.mood + "<br>" +
-  (entry.text || "") +
-  "<br><button onclick='deleteEntry(" + index + ")'>削除</button>";
-        container.appendChild(div);
+        const dateOnly = entry.timestamp.split(" ")[0];
+
+        if (!grouped[dateOnly]) {
+            grouped[dateOnly] = [];
+        }
+
+        grouped[dateOnly].push({ ...entry, index });
+    });
+
+    const sortedDates = Object.keys(grouped)
+        .sort((a, b) => new Date(a) - new Date(b));
+
+    sortedDates.forEach(date => {
+        const dateDiv = document.createElement("div");
+        dateDiv.innerHTML = "<h4>" + date + "</h4>";
+        container.appendChild(dateDiv);
+
+        grouped[date].forEach(entry => {
+            const div = document.createElement("div");
+            div.className = "entry";
+
+            div.innerHTML =
+                "<strong>" + entry.timestamp + "</strong><br>" +
+                "気分: " + entry.mood + "<br>" +
+                (entry.text || "") +
+                "<br><button onclick='deleteEntry(" + entry.index + ")'>削除</button>";
+
+            container.appendChild(div);
+        });
     });
 }
 
